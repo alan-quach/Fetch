@@ -1,0 +1,44 @@
+CREATE OR REPLACE FILE FORMAT my_json
+    type = json
+    strip_outer_array = true;
+
+create schema STG_JSON;
+
+create table stg_json.users (json_data variant);
+
+copy into stg_json.users
+from @my_stage/users.json
+file_format = (format_name = my_json);
+
+create schema fetch_users;
+
+create table fetch_users."users" 
+as
+select (json_data:_id):"$oid"::varchar                      AS "_id"
+, json_data:active::varchar                                 AS "active"
+, to_timestamp(json_data:createdDate:"$date"::varchar)      AS "createdDate"
+, to_timestamp(json_data:lastLogin:"$date"::varchar)        AS "lastLogin"
+, json_data:"role"::varchar                                 AS "role"
+, json_data:signUpSource::varchar                           AS "signUpSource"
+, json_data:state::varchar                                  AS "state"
+from stg_json.users;
+
+create table stg_json.brands (json_data variant);
+
+copy into stg_json.brands
+from @my_stage/brands.json 
+file_format = (format_name = my_json);
+
+create schema fetch_brands;
+
+create or replace table fetch_brands.brands
+as
+select 
+(json_data:_id):"$oid"::varchar                             AS "_id"
+, json_data:barcode::varchar                                AS "barcode"                      
+, json_data:category::varchar                               AS "category"
+, json_data:categoryCode::varchar                           AS "categoryCode"
+, json_data:cpg:"$id":"$oid"::varchar                       AS "cpg"
+, json_data:topBrand::varchar                               AS "topBrand"
+, json_data:name::varchar                                   AS "name"
+from stg_json.brands
