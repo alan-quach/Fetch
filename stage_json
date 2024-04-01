@@ -2,43 +2,94 @@ CREATE OR REPLACE FILE FORMAT my_json
     type = json
     strip_outer_array = true;
 
-create schema STG_JSON;
+create schema "stage_json";
 
-create table stg_json.users (json_data variant);
+create or replace table "stage_json"."users" (json_data variant);
 
-copy into stg_json.users
+copy into "stage_json"."users"
 from @my_stage/users.json
 file_format = (format_name = my_json);
 
-create schema fetch_users;
+create or replace table "stage_json"."brands" (json_data variant);
 
-create table fetch_users."users" 
+copy into "stage_json"."brands"
+from @my_stage/brands.json 
+file_format = (format_name = my_json);
+
+create table "stage_json"."receipts" (json_data variant);
+
+copy into "stage_json"."receipts"
+from @my_stage/receipts.json 
+file_format = (format_name = my_json);
+
+create schema "stage_load";
+
+create or replace table "stage_load"."users" 
 as
-select (json_data:_id):"$oid"::varchar                      AS "_id"
+select (json_data:_id):"$oid"::varchar                      AS "userId"
 , json_data:active::varchar                                 AS "active"
 , to_timestamp(json_data:createdDate:"$date"::varchar)      AS "createdDate"
 , to_timestamp(json_data:lastLogin:"$date"::varchar)        AS "lastLogin"
 , json_data:"role"::varchar                                 AS "role"
 , json_data:signUpSource::varchar                           AS "signUpSource"
 , json_data:state::varchar                                  AS "state"
-from stg_json.users;
+, json_data                                                 AS "data"
+from "stage_json"."users";
 
-create table stg_json.brands (json_data variant);
-
-copy into stg_json.brands
-from @my_stage/brands.json 
-file_format = (format_name = my_json);
-
-create schema fetch_brands;
-
-create or replace table fetch_brands.brands
+create or replace table "stage_load"."brands"
 as
 select 
-(json_data:_id):"$oid"::varchar                             AS "_id"
-, json_data:barcode::varchar                                AS "barcode"                      
+(json_data:_id):"$oid"::varchar                             AS "brandId"
+, json_data:barcode::varchar                                AS "barcode"     
+, json_data:brandCode::varchar                              AS "brandCode"
 , json_data:category::varchar                               AS "category"
 , json_data:categoryCode::varchar                           AS "categoryCode"
-, json_data:cpg:"$id":"$oid"::varchar                       AS "cpg"
+, json_data:cpg:"$id":"$oid"::varchar(255)                  AS "cpg"
+, json_data:cpg:"$ref"::varchar(255)                        AS "ref"
 , json_data:topBrand::varchar                               AS "topBrand"
 , json_data:name::varchar                                   AS "name"
-from stg_json.brands
+, json_data                                                 AS "data"
+from "stage_json"."brands"
+;
+
+create or replace table "stage_load"."receipts"
+as
+select 
+(json_data:_id):"$oid"::varchar(255)                            AS "receiptId"
+, json_data:bonusPointsEarned::number(18,0)                     AS "bonusPointsEarned"                      
+, json_data:bonusPointsEarnedReason::varchar(255)               AS "bonusPointsEarnedReason"
+, to_timestamp(json_data:createDate:"$date"::varchar)           AS "createDate"
+, to_timestamp(json_data:dateScanned:"$date"::varchar)          AS "dateScanned"
+, to_timestamp(json_data:finishedDate:"$date"::varchar)         AS "finishedDate"
+, to_timestamp(json_data:modifyDate:"$date"::varchar)           AS "modifyDate"
+, to_timestamp(json_data:pointsAwardedDate:"$date"::varchar)    AS "pointsAwardedDate"
+, json_data:pointsEarned::number(18,2)                          AS "pointsEarned"
+, to_timestamp(json_data:purchaseDate:"$date"::varchar)         AS "purchaseDate"
+, json_data:purchasedItemCount::number                          AS "purchasedItemCount"
+, json_data:rewardsReceiptItemList::variant                     AS "rewardsReceiptItemList"
+, json_data:rewardsReceiptStatus::varchar(255)                  AS "rewardsReceiptStatus"
+, json_data:totalSpent::number(18,2)                            AS "totalSpent"
+, json_data:userId::varchar(255)                                AS "userId"
+, json_data                                                     AS "data"
+from "stage_json"."receipts"
+;
+
+create or replace table "stage_load"."receiptsItems"
+as
+select 
+a.json_data:_id:"$oid"::varchar                                             AS "receiptId"
+, a.json_data:rewardsReceiptItemList[0].barcode::varchar(255)               AS "barcode"
+, a.json_data:rewardsReceiptItemList[0].description::varchar(255)           AS "description"
+, a.json_data:rewardsReceiptItemList[0].finalPrice::number(18,2)            AS "finalPrice"
+, a.json_data:rewardsReceiptItemList[0].itemPrice::number(18,2)             AS "itemPrice"
+, a.json_data:rewardsReceiptItemList[0].needsFetchReview::boolean           AS "needsFetchReview"
+, a.json_data:rewardsReceiptItemList[0].partnerItemId::number               AS "partnerItemId"
+, a.json_data:rewardsReceiptItemList[0].preventTargetGapPoints::boolean     AS "preventTargetGapPoints"
+, a.json_data:rewardsReceiptItemList[0].quantityPurchased::number           AS "quantityPurchased"
+, a.json_data:rewardsReceiptItemList[0].userFlaggedBarcode::varchar         AS "userFlaggedBarCode"
+, a.json_data:rewardsReceiptItemList[0].userFlaggedNewItem::boolean         AS "userFlaggedNewItem"
+, a.json_data:rewardsReceiptItemList[0].userFlaggedPrice::number(18,2)      AS "userFlaggedPrice"
+, a.json_data:rewardsReceiptItemList[0].userFlaggedQuantity::number(18)     AS "userFlaggedQuantity"
+, a.json_data:rewardsReceiptItemList[0]                                     AS "data"
+from "stage_json"."receipts" a
+;
