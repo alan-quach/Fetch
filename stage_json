@@ -93,3 +93,9 @@ a.json_data:_id:"$oid"::varchar                                             AS "
 , a.json_data:rewardsReceiptItemList[0]                                     AS "data"
 from "stage_json"."receipts" a
 ;
+
+select distinct
+receiptitems.value:barcode::varchar as barcode
+, receiptitems.value:description::varchar as description
+from "stage_json"."receipts" receipt
+, lateral flatten(input=>receipt.json_data:rewardsReceiptItemList) receiptItems
