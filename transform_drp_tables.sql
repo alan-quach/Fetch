@@ -65,3 +65,14 @@ select distinct (json_data:_id):"$oid"::varchar(255)                     as rece
 from "stage_json"."receipts" receipt
    , lateral flatten(input =>receipt.json_data:rewardsReceiptItemList) receiptitems
 ;
+
+create or replace table fetch.drp.users
+as
+select (json_data:_id):"$oid"::varchar(255)                 as userid
+     , json_data:active::varchar(255)                       as active
+     , to_timestamp(json_data:createdDate:"$date"::varchar) as createddate
+     , to_timestamp(json_data:lastLogin:"$date"::varchar)   as lastlogin
+     , json_data:"role"::varchar(255)                       as role
+     , json_data:signUpSource::varchar(255)                 as signupsource
+     , json_data:state::varchar(255)                        as state
+from "stage_json"."users";
