@@ -13,6 +13,26 @@ select (json_data:_id):"$oid"::varchar(255)     as brandId
 from "stage_json"."brands"
 ;
 
+create or replace table FETCH.drp.receipts
+as
+select
+(json_data:_id):"$oid"::varchar(255)                            AS receiptId
+, to_timestamp(json_data:createDate:"$date"::varchar)           AS createDate
+, to_timestamp(json_data:dateScanned:"$date"::varchar)          AS dateScanned
+, to_timestamp(json_data:finishedDate:"$date"::varchar)         AS finishedDate
+, to_timestamp(json_data:modifyDate:"$date"::varchar)           AS modifyDate
+, to_timestamp(json_data:purchaseDate:"$date"::varchar)         AS purchaseDate
+, to_timestamp(json_data:pointsAwardedDate:"$date"::varchar)    AS pointsAwardedDate
+, json_data:bonusPointsEarned::number(18,0)                     AS bonusPointsEarned
+, json_data:bonusPointsEarnedReason::varchar(255)               AS bonusPointsEarnedReason
+, json_data:pointsEarned::number(18,2)                          AS pointsEarned
+, json_data:rewardsReceiptStatus::varchar(255)                  AS rewardsReceiptStatus
+, json_data:purchasedItemCount::number                          AS purchasedItemCount
+, json_data:totalSpent::number(18,2)                            AS totalSpent
+, json_data:userId::varchar(255)                                AS userId
+from "stage_json"."receipts"
+;
+
 create table drp.receiptItems
 as
 select distinct (json_data:_id):"$oid"::varchar(255)                     as receiptid
