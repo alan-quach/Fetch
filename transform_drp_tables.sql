@@ -13,7 +13,7 @@ select (json_data:_id):"$oid"::varchar(255)     as brandId
 from "stage_json"."brands"
 ;
 
-create or replace table FETCH.drp.receipts
+create or replace table drp.receipts
 as
 select
 (json_data:_id):"$oid"::varchar(255)                            AS receiptId
@@ -66,7 +66,7 @@ from "stage_json"."receipts" receipt
    , lateral flatten(input =>receipt.json_data:rewardsReceiptItemList) receiptitems
 ;
 
-create or replace table fetch.drp.users
+create or replace table drp.users
 as
 select (json_data:_id):"$oid"::varchar(255)                 as userid
      , json_data:active::varchar(255)                       as active
